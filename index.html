@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0d0f14">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Supervision Énergétique UM6P</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Open+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root {
+  --red: #E74C3C;
+  --gold: #d4af37;
+  --bg: #0d0f14;
+  --bg2: #13161f;
+  --bg3: #1a1e2a;
+  --bg4: #202435;
+  --border: rgba(231,76,60,0.18);
+  --text: #e8e9ed;
+  --muted: #6b7080;
+  --sub: #9a9db0;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Open Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased;}
+
+/* ── HEADER ── */
+.header{
+  background:var(--bg2);
+  border-bottom:1px solid var(--border);
+  padding:22px 30px 18px;
+  text-align:center;
+  position:relative;
+}
+.header::after{
+  content:'';position:absolute;bottom:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,var(--red) 30%,var(--gold) 70%,transparent);
+}
+.header h1{
+  font-family:'Montserrat',sans-serif;
+  font-size:clamp(1.3em,3vw,2em);
+  font-weight:800;
+  background:linear-gradient(90deg,var(--red),var(--gold));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  letter-spacing:2px;text-transform:uppercase;margin-bottom:5px;
+}
+.header-sub{color:var(--sub);font-size:.9em;margin-bottom:14px;}
+.header-actions{display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;}
+.status-pill{
+  display:inline-flex;align-items:center;gap:7px;
+  background:rgba(76,217,100,.1);border:1px solid rgba(76,217,100,.25);
+  border-radius:20px;padding:6px 14px;font-size:.82em;color:#4cd964;font-weight:600;
+}
+.status-pill.error{background:rgba(255,71,87,.1);border-color:rgba(255,71,87,.3);color:#ff4757;}
+.status-pill.loading{background:rgba(212,175,55,.1);border-color:rgba(212,175,55,.3);color:var(--gold);}
+.status-dot{width:7px;height:7px;border-radius:50%;background:#4cd964;}
+.status-pill.error .status-dot{background:#ff4757;}
+.status-pill.loading .status-dot{background:var(--gold);animation:blink 1s infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.btn-refresh{
+  background:linear-gradient(135deg,var(--red),var(--gold));
+  border:none;border-radius:20px;padding:7px 18px;color:#fff;
+  font-family:'Montserrat',sans-serif;font-weight:600;font-size:.82em;
+  cursor:pointer;display:inline-flex;align-items:center;gap:7px;
+  transition:all .3s ease;
+}
+.btn-refresh:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(231,76,60,.4);}
+.btn-refresh.spinning i{animation:spin 1s linear infinite;}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+.update-label{color:var(--muted);font-size:.82em;}
+#updateTime{color:var(--gold);font-weight:600;}
+
+/* ── MAIN NAV (pages) ── */
+.main-nav{
+  display:flex;gap:0;
+  background:var(--bg2);
+  border-bottom:1px solid var(--border);
+  padding:0 20px;
+  overflow-x:auto;-webkit-overflow-scrolling:touch;
+}
+.main-tab{
+  flex:1;min-width:140px;
+  padding:16px 20px;
+  background:transparent;border:none;
+  color:var(--sub);
+  font-family:'Montserrat',sans-serif;font-size:.88em;font-weight:600;
+  cursor:pointer;transition:all .25s ease;
+  white-space:nowrap;
+  border-bottom:3px solid transparent;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  text-transform:uppercase;letter-spacing:.5px;
+}
+.main-tab:hover{color:var(--text);background:rgba(255,255,255,.03);}
+.main-tab.active{
+  color:var(--text);
+  border-bottom-color:var(--red);
+  background:rgba(231,76,60,.05);
+}
+
+/* ── CONTENT ── */
+.content{padding:25px 25px 40px;max-width:1800px;margin:0 auto;}
+.page{display:none;}
+.page.active{display:block;}
+
+/* ── KPI GRID ── */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px;margin-bottom:25px;}
+.kpi-card{
+  background:var(--bg3);
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:22px 24px;
+  position:relative;overflow:hidden;
+  transition:transform .25s,box-shadow .25s;
+}
+.kpi-card::before{
+  content:'';position:absolute;bottom:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,var(--red),var(--gold));
+}
+.kpi-card:hover{transform:translateY(-3px);box-shadow:0 12px 35px rgba(0,0,0,.5);}
+.kpi-icon{font-size:1.6em;margin-bottom:12px;color:var(--red);}
+.kpi-icon.gold{color:var(--gold);}
+.kpi-icon.blue{color:#3498db;}
+.kpi-icon.warn{color:#ff9f40;}
+.kpi-label{font-size:.75em;color:var(--sub);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:8px;font-weight:600;}
+.kpi-val{font-family:'Montserrat',sans-serif;font-size:clamp(1.5em,3vw,2.2em);font-weight:700;color:var(--text);line-height:1.15;margin-bottom:6px;}
+.kpi-val.danger{color:#ff4757;}
+.kpi-sub{font-size:.78em;color:var(--muted);display:flex;align-items:center;gap:5px;}
+.kpi-sub .warn-icon{color:#ff9f40;}
+
+/* ── ZONES GRID ── */
+.zones-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:18px;margin-bottom:25px;}
+.zone-card{
+  background:var(--bg3);border:1px solid var(--border);border-radius:12px;
+  padding:20px;position:relative;overflow:hidden;
+}
+.zone-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--red),var(--gold));}
+.zone-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:10px;flex-wrap:wrap;}
+.zone-name{font-family:'Montserrat',sans-serif;font-size:1.05em;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px;}
+.zone-name i{color:var(--red);}
+.zone-tag{background:rgba(231,76,60,.2);color:var(--red);border:1px solid rgba(231,76,60,.3);border-radius:6px;padding:4px 10px;font-size:.75em;font-weight:700;letter-spacing:.5px;}
+.zone-metrics{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+.zm{background:var(--bg4);border-radius:8px;padding:12px;border:1px solid rgba(255,255,255,.04);}
+.zm-label{font-size:.72em;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.8px;}
+.zm-val{font-family:'Montserrat',sans-serif;font-size:1.1em;font-weight:700;color:var(--text);}
+.zm-val.red{color:#ff4757;}
+.chart-wrap{height:160px;position:relative;}
+
+/* ── CHART CARD ── */
+.chart-card{
+  background:var(--bg3);border:1px solid var(--border);border-radius:12px;
+  padding:22px;margin-bottom:18px;position:relative;overflow:hidden;
+}
+.chart-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--red),var(--gold));}
+.chart-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px;}
+.chart-title{font-family:'Montserrat',sans-serif;font-size:1em;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px;}
+.chart-title i{color:var(--red);}
+.chart-big{height:300px;position:relative;}
+.chart-med{height:220px;position:relative;}
+
+/* ── TABLE ── */
+.table-card{
+  background:var(--bg3);border:1px solid var(--border);border-radius:12px;
+  overflow:hidden;margin-bottom:18px;
+}
+.table-head-row{padding:18px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;}
+.table-head-row span{font-family:'Montserrat',sans-serif;font-size:.95em;font-weight:700;color:var(--text);}
+.table-head-row i{color:var(--red);}
+.tbl{width:100%;border-collapse:collapse;}
+.tbl th{background:rgba(231,76,60,.12);padding:12px 16px;text-align:left;font-family:'Montserrat',sans-serif;font-size:.75em;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:.8px;border-bottom:1px solid var(--border);}
+.tbl td{padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.04);font-size:.88em;color:var(--text);}
+.tbl tr:hover td{background:rgba(231,76,60,.04);}
+.tbl tr.crit td{border-left:3px solid #ff4757;}
+.badge{display:inline-block;padding:4px 10px;border-radius:5px;font-size:.72em;font-weight:700;text-transform:uppercase;letter-spacing:.5px;}
+.badge.crit{background:rgba(255,71,87,.2);color:#ff4757;}
+.badge.high{background:rgba(255,159,64,.2);color:#ff9f40;}
+.badge.norm{background:rgba(75,192,192,.2);color:#4bc0c0;}
+.badge.good{background:rgba(76,217,100,.2);color:#4cd964;}
+
+/* ── SHEET TABS (sub-tabs for data pages) ── */
+.sheet-tabs{
+  display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;
+}
+.sheet-tab{
+  padding:7px 16px;
+  background:var(--bg3);border:1px solid var(--border);border-radius:8px;
+  color:var(--sub);font-size:.82em;font-weight:600;cursor:pointer;
+  transition:all .2s;font-family:'Montserrat',sans-serif;
+  display:flex;align-items:center;gap:6px;
+}
+.sheet-tab:hover{border-color:var(--red);color:var(--text);}
+.sheet-tab.active{background:rgba(231,76,60,.15);border-color:var(--red);color:var(--text);}
+
+/* ── SPINNER ── */
+.spinner-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;gap:16px;}
+.spinner{width:44px;height:44px;border:3px solid rgba(231,76,60,.2);border-top:3px solid var(--red);border-radius:50%;animation:spin 1s linear infinite;}
+.spinner-label{color:var(--muted);font-size:.9em;}
+
+/* ── ERROR BOX ── */
+.err-box{background:rgba(255,71,87,.08);border:1px solid rgba(255,71,87,.3);border-radius:10px;padding:16px 20px;color:#ff4757;margin-bottom:16px;display:flex;gap:10px;align-items:flex-start;}
+.err-box i{margin-top:2px;flex-shrink:0;}
+
+/* ── PERIOD BADGE ── */
+.period-badge{background:var(--bg4);border:1px solid var(--border);border-radius:8px;padding:6px 12px;font-size:.8em;color:var(--sub);display:inline-flex;align-items:center;gap:6px;}
+
+/* ── RESPONSIVE ── */
+@media(max-width:768px){
+  .header{padding:16px 15px 14px;}
+  .content{padding:15px 12px 60px;}
+  .main-nav{padding:0 8px;}
+  .main-tab{min-width:110px;padding:13px 12px;font-size:.8em;}
+  .kpi-grid{grid-template-columns:repeat(2,1fr);}
+  .kpi-val{font-size:1.4em;}
+  .zones-grid{grid-template-columns:1fr;}
+  .chart-big{height:220px;}
+}
+
+/* ── FAB ── */
+.fab{position:fixed;bottom:24px;right:24px;width:52px;height:52px;background:linear-gradient(135deg,var(--red),var(--gold));border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.3em;cursor:pointer;box-shadow:0 6px 20px rgba(231,76,60,.5);border:none;z-index:999;transition:transform .2s;}
+.fab:hover{transform:scale(1.1);}
+@media(min-width:769px){.fab{display:none;}}
+
+/* ── OVERFLOW for tables ── */
+.tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.tbl{min-width:540px;}
+</style>
+</head>
+<body>
+
+<!-- ══ HEADER ══ -->
+<div class="header">
+  <h1>Supervision Énergétique UM6P Rabat</h1>
+  <div class="header-sub" id="headerSub">Période : — | Données : Google Sheets UM6P</div>
+  <div class="header-actions">
+    <div class="status-pill loading" id="statusPill">
+      <div class="status-dot"></div>
+      <span id="statusTxt">Chargement…</span>
+    </div>
+    <button class="btn-refresh" id="btnRefresh" onclick="refreshAll()">
+      <i class="fas fa-sync-alt" id="refreshIcon"></i> Actualiser
+    </button>
+    <span class="update-label">Mis à jour : <span id="updateTime">--:--:--</span></span>
+  </div>
+</div>
+
+<!-- ══ MAIN NAV ══ -->
+<div class="main-nav" id="mainNav">
+  <button class="main-tab active" onclick="switchPage('pg-global',this)">
+    <i class="fas fa-chart-line"></i> Vue Globale
+  </button>
+  <button class="main-tab" onclick="switchPage('pg-batiments',this)">
+    <i class="fas fa-building"></i> Détails Bâtiments
+  </button>
+  <button class="main-tab" onclick="switchPage('pg-mensuel',this)">
+    <i class="fas fa-calendar-alt"></i> Analyse Mensuelle
+  </button>
+  <button class="main-tab" onclick="switchPage('pg-donnees',this)">
+    <i class="fas fa-database"></i> Données Brutes
+  </button>
+</div>
+
+<div class="content">
+
+  <!-- ══════════════════════════
+       PAGE 1 : VUE GLOBALE
+  ══════════════════════════ -->
+  <div id="pg-global" class="page active">
+
+    <!-- KPI Cards -->
+    <div class="kpi-grid" id="kpiGrid">
+      <div class="kpi-card">
+        <div class="kpi-icon"><i class="fas fa-bolt"></i></div>
+        <div class="kpi-label">Consommation Totale REDAL</div>
+        <div class="kpi-val" id="kConso">--</div>
+        <div class="kpi-sub" id="kConsoSub">--</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon gold"><i class="fas fa-solar-panel"></i></div>
+        <div class="kpi-label">Production PV Totale</div>
+        <div class="kpi-val" id="kPV">--</div>
+        <div class="kpi-sub" id="kPVSub">--</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon blue"><i class="fas fa-wallet"></i></div>
+        <div class="kpi-label">Revenus PV / Économies</div>
+        <div class="kpi-val" id="kCout">--</div>
+        <div class="kpi-sub" id="kCoutSub">--</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon warn"><i class="fas fa-exclamation-triangle"></i></div>
+        <div class="kpi-label">Pertes Apparentes Moy.</div>
+        <div class="kpi-val danger" id="kPertes">--</div>
+        <div class="kpi-sub" id="kPertesSub"><span class="warn-icon"><i class="fas fa-triangle-exclamation"></i></span> Taux de pertes apparent</div>
+      </div>
+    </div>
+
+    <!-- Évolution chart -->
+    <div class="chart-card">
+      <div class="chart-head">
+        <div class="chart-title"><i class="fas fa-chart-area"></i> Évolution Consommation vs Production PV</div>
+        <div class="period-badge" id="periodBadge"><i class="fas fa-calendar"></i> --</div>
+      </div>
+      <div class="chart-big"><canvas id="chartEvo"></canvas></div>
+    </div>
+
+    <!-- Zones -->
+    <div class="zones-grid" id="zonesGrid">
+      <!-- Zones générées dynamiquement -->
+    </div>
+
+  </div>
+
+  <!-- ══════════════════════════
+       PAGE 2 : DÉTAILS BÂTIMENTS
+  ══════════════════════════ -->
+  <div id="pg-batiments" class="page">
+
+    <div class="chart-card">
+      <div class="chart-head">
+        <div class="chart-title"><i class="fas fa-building"></i> Consommation par Compteur / Zone</div>
+      </div>
+      <div class="chart-big"><canvas id="chartBat"></canvas></div>
+    </div>
+
+    <div class="table-card">
+      <div class="table-head-row"><i class="fas fa-list"></i><span>Récapitulatif par Compteur</span></div>
+      <div class="tbl-wrap">
+        <table class="tbl">
+          <thead><tr><th>Zone</th><th>Compteur</th><th>Consommation</th><th>PV</th><th>Coût</th><th>Pertes est.</th><th>Statut</th></tr></thead>
+          <tbody id="tbatBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══════════════════════════
+       PAGE 3 : ANALYSE MENSUELLE
+  ══════════════════════════ -->
+  <div id="pg-mensuel" class="page">
+
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-icon"><i class="fas fa-solar-panel"></i></div>
+        <div class="kpi-label">PV Zone 1</div>
+        <div class="kpi-val" id="mPV1">--</div>
+        <div class="kpi-sub">Campus Académique</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon gold"><i class="fas fa-solar-panel"></i></div>
+        <div class="kpi-label">PV Zone 2</div>
+        <div class="kpi-val" id="mPV2">--</div>
+        <div class="kpi-sub">Campus Scientifique</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon blue"><i class="fas fa-percentage"></i></div>
+        <div class="kpi-label">Taux Autoconsommation</div>
+        <div class="kpi-val" id="mAuto">--</div>
+        <div class="kpi-sub">Objectif : 75 %</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon" style="color:#2ecc71"><i class="fas fa-leaf"></i></div>
+        <div class="kpi-label">CO₂ Évité</div>
+        <div class="kpi-val" id="mCO2">--</div>
+        <div class="kpi-sub">0,7 kg CO₂ / kWh PV</div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px;">
+      <div class="chart-card">
+        <div class="chart-head"><div class="chart-title"><i class="fas fa-chart-bar"></i> Consommation Mensuelle</div></div>
+        <div class="chart-med"><canvas id="chartMensuelConso"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-head"><div class="chart-title"><i class="fas fa-sun"></i> Production PV Mensuelle</div></div>
+        <div class="chart-med"><canvas id="chartMensuelPV"></canvas></div>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-head"><div class="chart-title"><i class="fas fa-chart-pie"></i> Répartition des Pertes par Zone</div></div>
+      <div style="height:250px;position:relative;"><canvas id="chartPertes"></canvas></div>
+    </div>
+
+  </div>
+
+  <!-- ══════════════════════════
+       PAGE 4 : DONNÉES BRUTES
+  ══════════════════════════ -->
+  <div id="pg-donnees" class="page">
+
+    <div class="sheet-tabs" id="sheetTabs">
+      <!-- onglets feuilles chargés dynamiquement -->
+    </div>
+
+    <div id="rawContent">
+      <div class="spinner-wrap"><div class="spinner"></div><div class="spinner-label">Chargement des données…</div></div>
+    </div>
+
+  </div>
+
+</div><!-- /content -->
+
+<!-- FAB mobile -->
+<button class="fab" onclick="refreshAll()"><i class="fas fa-sync-alt"></i></button>
+
+<script>
+/* ══════════════════════════════════════════
+   CONFIG — ne pas modifier
+══════════════════════════════════════════ */
+const SHEET_ID = '1KdADM21wpcl2GVuE2t7P8e8fJapMy289vLZZ40-cP1Q';
+const API_KEY  = 'AIzaSyAcsiWiRwCm51X_H0za7kKzCMMypKyHhuY';
+const REFRESH_MS = 900000; // 15 min
+
+/* ══ STATE ══ */
+let sheetsMeta = [];      // liste des feuilles [{id, title}]
+let sheetsData = {};      // { title: [[row],[row],...] }
+let charts = {};
+let activeSheetTab = null;
+let refreshTimer;
+
+/* ══ HELPERS ══ */
+const $ = id => document.getElementById(id);
+const num  = v => parseFloat(String(v??0).replace(/\s/g,'').replace(',','.')) || 0;
+const fmt  = n => isNaN(n) ? '--' : Math.round(n).toLocaleString('fr-FR');
+const fmtD = n => isNaN(n)||n===0 ? '--' : Math.round(n).toLocaleString('fr-FR');
+const set  = (id,v) => { const e=$(id); if(e) e.textContent=v; };
+
+function setStatus(type, txt) {
+  const p = $('statusPill');
+  p.className = 'status-pill ' + type;
+  $('statusTxt').textContent = txt;
+}
+function updateTime() {
+  $('updateTime').textContent = new Date().toLocaleTimeString('fr-FR');
+}
+function startSpin()  { $('btnRefresh').classList.add('spinning'); }
+function stopSpin()   { $('btnRefresh').classList.remove('spinning'); }
+
+/* ══ NAVIGATION ══ */
+function switchPage(id, btn) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.main-tab').forEach(t=>t.classList.remove('active'));
+  $(id).classList.add('active');
+  if(btn) btn.classList.add('active');
+  setTimeout(()=>Object.values(charts).forEach(c=>c&&c.resize()), 120);
+}
+
+/* ══════════════════════════════════════════
+   GOOGLE SHEETS — LOAD ALL SHEETS
+══════════════════════════════════════════ */
+async function loadAllSheets() {
+  setStatus('loading','Chargement…');
+  startSpin();
+  try {
+    // 1. Metadata pour obtenir la liste des feuilles
+    const metaUrl = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}?key=${API_KEY}`;
+    const metaRes = await fetch(metaUrl);
+    if (!metaRes.ok) {
+      const e = await metaRes.json().catch(()=>({}));
+      throw new Error(e.error?.message || `HTTP ${metaRes.status}`);
+    }
+    const meta = await metaRes.json();
+    sheetsMeta = meta.sheets.map(s=>({ id: s.properties.sheetId, title: s.properties.title }));
+
+    // 2. Charger toutes les feuilles en parallèle
+    const results = await Promise.allSettled(
+      sheetsMeta.map(s => fetchSheet(s.title))
+    );
+    results.forEach((r,i) => {
+      if(r.status==='fulfilled') sheetsData[sheetsMeta[i].title] = r.value;
+    });
+
+    // 3. Construire onglets données brutes
+    buildSheetTabs();
+
+    // 4. Analyser et afficher
+    analyzeAndRender();
+
+    setStatus('connected','Google Sheets connecté');
+    updateTime();
+  } catch(e) {
+    console.error(e);
+    setStatus('error','Erreur : ' + e.message.slice(0,60));
+    showError(e.message);
+  } finally {
+    stopSpin();
+  }
+}
+
+async function fetchSheet(name) {
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(name)}?key=${API_KEY}`;
+  const res = await fetch(url);
+  if(!res.ok) throw new Error(`Feuille "${name}" — HTTP ${res.status}`);
+  const d = await res.json();
+  return d.values || [];
+}
+
+/* ══════════════════════════════════════════
+   BUILD SHEET TABS (page données brutes)
+══════════════════════════════════════════ */
+function buildSheetTabs() {
+  const container = $('sheetTabs');
+  container.innerHTML = '';
+  sheetsMeta.forEach((s,i) => {
+    const btn = document.createElement('button');
+    btn.className = 'sheet-tab' + (i===0?' active':'');
+    btn.innerHTML = `<i class="fas fa-table"></i> ${s.title}`;
+    btn.onclick = () => showRawSheet(s.title, btn);
+    container.appendChild(btn);
+  });
+  if(sheetsMeta.length>0) showRawSheet(sheetsMeta[0].title, container.querySelector('.sheet-tab'));
+}
+
+function showRawSheet(name, btn) {
+  document.querySelectorAll('.sheet-tab').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  activeSheetTab = name;
+  renderRawTable(name);
+}
+
+function renderRawTable(name) {
+  const rows = sheetsData[name] || [];
+  const container = $('rawContent');
+  if(!rows || rows.length===0) {
+    container.innerHTML = '<div class="err-box"><i class="fas fa-info-circle"></i> Aucune donnée dans cette feuille.</div>';
+    return;
+  }
+  const headers = rows[0];
+  const data = rows.slice(1);
+  let html = `
+    <div class="table-card">
+      <div class="table-head-row"><i class="fas fa-database"></i><span>${name} — ${data.length} ligne(s)</span></div>
+      <div class="tbl-wrap">
+        <table class="tbl">
+          <thead><tr><th>#</th>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead>
+          <tbody>
+            ${data.map((r,i)=>`<tr><td>${i+1}</td>${headers.map((_,j)=>`<td>${r[j]??''}</td>`).join('')}</tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+  container.innerHTML = html;
+}
+
+/* ══════════════════════════════════════════
+   ANALYSE — détection auto colonnes
+══════════════════════════════════════════ */
+function detectCols(headers) {
+  const H = headers.map(h=>String(h).toLowerCase());
+  const ci = (...kws) => H.findIndex(h=>kws.some(k=>h.includes(k)));
+  return {
+    date:  ci('date','période','mois'),
+    zone:  ci('zone','campus','site','batiment','bât'),
+    comp:  ci('comp','compt','meter','pdl'),
+    conso: ci('conso','kwh','consomm','actif'),
+    pv:    ci('pv','solaire','solar','prod'),
+    cout:  ci('cout','coût','mad','tarif','facture','montant'),
+    perte: ci('perte','loss','écart'),
+  };
+}
+
+function analyzeAndRender() {
+  // On agrège toutes les feuilles
+  let allRows = [];
+  let periodMin='', periodMax='';
+
+  sheetsMeta.forEach(s => {
+    const rows = sheetsData[s.title] || [];
+    if(rows.length < 2) return;
+    const cols = detectCols(rows[0]);
+    rows.slice(1).forEach(r => {
+      allRows.push({ _sheet:s.title, _cols:cols, _row:r, _headers:rows[0] });
+    });
+  });
+
+  if(allRows.length===0) { showError('Aucune donnée dans le Google Sheet.'); return; }
+
+  // Agrégation globale
+  let totalConso=0, totalPV=0, totalCout=0;
+  const byZone={}, byComp={}, byDate={};
+
+  allRows.forEach(({_cols:c, _row:r, _headers:H}) => {
+    const date  = c.date >=0 ? (r[c.date]||'') : '';
+    const zone  = c.zone >=0 ? (r[c.zone]||'Autre') : (_s => _s)('Autre');
+    const comp  = c.comp >=0 ? (r[c.comp]||'?') : '?';
+    const conso = num(c.conso>=0 ? r[c.conso] : 0);
+    const pv    = num(c.pv   >=0 ? r[c.pv]   : 0);
+    const cout  = num(c.cout >=0 ? r[c.cout]  : 0);
+    const perte = c.perte>=0 ? num(r[c.perte]) : null;
+
+    totalConso+=conso; totalPV+=pv; totalCout+=cout;
+
+    if(!byZone[zone]) byZone[zone]={conso:0,pv:0,cout:0,comps:new Set()};
+    byZone[zone].conso+=conso; byZone[zone].pv+=pv; byZone[zone].cout+=cout;
+    byZone[zone].comps.add(comp);
+
+    if(!byComp[comp]) byComp[comp]={zone,conso:0,pv:0,cout:0,perte:null};
+    byComp[comp].conso+=conso; byComp[comp].pv+=pv; byComp[comp].cout+=cout;
+    if(perte!==null) byComp[comp].perte=perte;
+
+    if(date) {
+      if(!byDate[date]) byDate[date]={conso:0,pv:0};
+      byDate[date].conso+=conso; byDate[date].pv+=pv;
+      if(!periodMin||date<periodMin) periodMin=date;
+      if(!periodMax||date>periodMax) periodMax=date;
+    }
+  });
+
+  const pertePct = totalConso>0 ? ((totalConso-totalPV)/totalConso*100) : 0;
+
+  // Period header
+  const period = periodMin ? `${periodMin}${periodMin!==periodMax?' → '+periodMax:''}` : 'N/A';
+  $('headerSub').textContent = `Période : ${period} | Données : Google Sheets UM6P`;
+  $('periodBadge').innerHTML = `<i class="fas fa-calendar"></i> ${period}`;
+
+  // ── KPI ──
+  set('kConso', fmt(totalConso) + ' kWh');
+  set('kConsoSub', 'Données Google Sheets ' + new Date().getFullYear());
+  set('kPV', fmt(totalPV) + ' kWh');
+  set('kPVSub', totalConso>0 ? `Rendement : ${(totalPV/totalConso*100).toFixed(1)} kWh/kWc` : '--');
+  set('kCout', fmt(totalCout) + ' MAD');
+  set('kCoutSub', 'Revenus économisés');
+  set('kPertes', pertePct.toFixed(1) + '%');
+
+  // ── Zones ──
+  renderZones(byZone, byDate);
+
+  // ── Mensuel ──
+  const zKeys=Object.keys(byZone);
+  const z1k=zKeys.find(k=>k.toLowerCase().includes('acad')||k.toLowerCase().includes('nord')||k.includes('1'))||zKeys[0]||'';
+  const z2k=zKeys.find(k=>k.toLowerCase().includes('sci')||k.toLowerCase().includes('ext')||k.includes('2'))||zKeys[1]||'';
+  set('mPV1', fmt((byZone[z1k]||{pv:0}).pv)+' kWh');
+  set('mPV2', fmt((byZone[z2k]||{pv:0}).pv)+' kWh');
+  set('mAuto', totalConso>0?(totalPV/totalConso*100).toFixed(1)+'%':'--');
+  set('mCO2', (totalPV*0.0007).toFixed(1)+' t');
+
+  // ── Tableau bâtiments ──
+  renderBatTable(byComp);
+
+  // ── Charts ──
+  renderCharts(byDate, byZone, byComp, byZone);
+}
+
+/* ══ ZONES CARDS ══ */
+function renderZones(byZone, byDate) {
+  const container = $('zonesGrid');
+  container.innerHTML = '';
+  const zKeys = Object.keys(byZone);
+  const colors = ['REDAL-Z1-001','REDAL-Z2-002','REDAL-Z3-003','REDAL-Z4-004'];
+  zKeys.forEach((zk,i) => {
+    const z = byZone[zk];
+    const pct = z.conso>0 ? ((z.conso-z.pv)/z.conso*100).toFixed(1) : '--';
+    const canvasId = `zoneChart_${i}`;
+    const div = document.createElement('div');
+    div.className = 'zone-card';
+    div.innerHTML = `
+      <div class="zone-head">
+        <span class="zone-name"><i class="fas fa-map-marker-alt"></i> Zone ${i+1} – ${zk}</span>
+        <span class="zone-tag">${colors[i]||'REDAL-Z'+(i+1)}</span>
+      </div>
+      <div class="zone-metrics">
+        <div class="zm"><div class="zm-label">Consommation</div><div class="zm-val">${fmt(z.conso)} kWh</div></div>
+        <div class="zm"><div class="zm-label">Production PV</div><div class="zm-val">${fmt(z.pv)} kWh</div></div>
+        <div class="zm"><div class="zm-label">Coût</div><div class="zm-val">${fmt(z.cout)} MAD</div></div>
+        <div class="zm"><div class="zm-label">Pertes est.</div><div class="zm-val red">${pct}%</div></div>
+      </div>
+      <div class="chart-wrap"><canvas id="${canvasId}"></canvas></div>`;
+    container.appendChild(div);
+
+    // mini bar chart per zone
+    const dates = Object.keys(byDate).sort().slice(-8);
+    setTimeout(()=>{
+      const ctx = document.getElementById(canvasId);
+      if(!ctx) return;
+      if(charts[canvasId]) charts[canvasId].destroy();
+      charts[canvasId] = new Chart(ctx,{
+        type:'bar',
+        data:{
+          labels: dates.map(d=>d.slice(-5)),
+          datasets:[
+            {label:'Conso',data:dates.map(d=>(byDate[d]||{conso:0}).conso),backgroundColor:'rgba(231,76,60,.7)',borderRadius:4},
+            {label:'PV',   data:dates.map(d=>(byDate[d]||{pv:0}).pv),   backgroundColor:'rgba(212,175,55,.7)',borderRadius:4}
+          ]
+        },
+        options:{responsive:true,maintainAspectRatio:false,
+          plugins:{legend:{display:false}},
+          scales:{
+            y:{display:false},
+            x:{ticks:{color:'#6b7080',font:{size:9}},grid:{display:false}}
+          }
+        }
+      });
+    },50);
+  });
+}
+
+/* ══ BÂTIMENTS TABLE ══ */
+function renderBatTable(byComp) {
+  const tbody = $('tbatBody');
+  tbody.innerHTML='';
+  Object.entries(byComp).forEach(([comp,d])=>{
+    const p = d.perte!==null ? d.perte : (d.conso>0?(d.conso-d.pv)/d.conso*100:0);
+    const pi=Math.round(p);
+    const [bc,bl] = pi>45?['crit','CRITIQUE']:pi>30?['high','ÉLEVÉ']:pi>15?['norm','NORMAL']:['good','BON'];
+    const tr=document.createElement('tr');
+    if(pi>45) tr.classList.add('crit');
+    tr.innerHTML=`<td>${d.zone}</td><td>${comp}</td><td>${fmt(d.conso)} kWh</td><td>${fmt(d.pv)} kWh</td><td>${fmt(d.cout)} MAD</td><td>${p.toFixed(1)}%</td><td><span class="badge ${bc}">${bl}</span></td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+/* ══ CHARTS ══ */
+function renderCharts(byDate, byZone, byComp) {
+  const dates = Object.keys(byDate).sort();
+  const last20 = dates.slice(-20);
+
+  const gridColor = 'rgba(255,255,255,.05)';
+  const tickColor = '#6b7080';
+
+  const baseScales = {
+    y:{grid:{color:gridColor},ticks:{color:tickColor,font:{size:11}}},
+    x:{grid:{color:gridColor},ticks:{color:tickColor,font:{size:11}}}
+  };
+
+  // Evolution
+  initOrUpdate('chartEvo','line',{
+    labels: last20.map(d=>d.slice(-5)),
+    datasets:[
+      {label:'Consommation (kWh)',data:last20.map(d=>byDate[d].conso),borderColor:'#E74C3C',backgroundColor:'rgba(231,76,60,.1)',fill:true,tension:.4,pointRadius:3},
+      {label:'Production PV (kWh)',data:last20.map(d=>byDate[d].pv),borderColor:'#d4af37',backgroundColor:'rgba(212,175,55,.1)',fill:true,tension:.4,pointRadius:3}
+    ]
+  },{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{labels:{color:'#e8e9ed',font:{size:12}}}},
+    scales:baseScales
+  });
+
+  // Bâtiments doughnut
+  const cKeys=Object.keys(byComp);
+  initOrUpdate('chartBat','doughnut',{
+    labels: cKeys,
+    datasets:[{data:cKeys.map(k=>byComp[k].conso),backgroundColor:['#E74C3C','#d4af37','#3498db','#2ecc71','#9b59b6','#f39c12'],borderWidth:0,hoverOffset:8}]
+  },{responsive:true,maintainAspectRatio:false,cutout:'60%',
+    plugins:{legend:{position:'right',labels:{color:'#e8e9ed',font:{size:12},padding:14}}}
+  });
+
+  // Mensuel conso (par mois)
+  const byMonth={};
+  dates.forEach(d=>{
+    const m=d.slice(0,7);
+    if(!byMonth[m])byMonth[m]={conso:0,pv:0};
+    byMonth[m].conso+=byDate[d].conso;
+    byMonth[m].pv+=byDate[d].pv;
+  });
+  const months=Object.keys(byMonth).sort();
+  initOrUpdate('chartMensuelConso','bar',{
+    labels:months,
+    datasets:[{label:'Consommation (kWh)',data:months.map(m=>byMonth[m].conso),backgroundColor:'rgba(231,76,60,.8)',borderRadius:5}]
+  },{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{labels:{color:'#e8e9ed'}}},scales:baseScales
+  });
+  initOrUpdate('chartMensuelPV','bar',{
+    labels:months,
+    datasets:[{label:'Production PV (kWh)',data:months.map(m=>byMonth[m].pv),backgroundColor:'rgba(212,175,55,.8)',borderRadius:5}]
+  },{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{labels:{color:'#e8e9ed'}}},scales:baseScales
+  });
+
+  // Pertes par zone
+  const zKeys=Object.keys(byZone);
+  const pertesData=zKeys.map(z=>byZone[z].conso>0?((byZone[z].conso-byZone[z].pv)/byZone[z].conso*100).toFixed(1):0);
+  initOrUpdate('chartPertes','bar',{
+    labels:zKeys,
+    datasets:[{label:'Pertes (%)',data:pertesData,backgroundColor:pertesData.map(p=>p>40?'rgba(255,71,87,.8)':p>25?'rgba(255,159,64,.8)':'rgba(75,192,192,.8)'),borderRadius:6}]
+  },{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:false}},
+    scales:{
+      y:{...baseScales.y,max:100,ticks:{...baseScales.y.ticks,callback:v=>v+'%'}},
+      x:baseScales.x
+    }
+  });
+}
+
+function initOrUpdate(id, type, data, options) {
+  if(charts[id]) { charts[id].destroy(); }
+  const ctx=document.getElementById(id);
+  if(!ctx) return;
+  charts[id]=new Chart(ctx,{type,data,options});
+}
+
+/* ══ ERROR ══ */
+function showError(msg) {
+  const existing = document.querySelector('.err-box');
+  if(existing) existing.remove();
+  const div=document.createElement('div');
+  div.className='err-box';
+  div.innerHTML=`<i class="fas fa-exclamation-circle"></i><div><strong>Erreur de connexion</strong><br>${msg}</div>`;
+  document.querySelector('.content').prepend(div);
+  setTimeout(()=>div.remove(),15000);
+}
+
+/* ══ REFRESH ══ */
+function refreshAll() {
+  loadAllSheets();
+}
+
+function startAutoRefresh() {
+  clearInterval(refreshTimer);
+  refreshTimer = setInterval(loadAllSheets, REFRESH_MS);
+}
+
+/* ══ BOOT ══ */
+document.addEventListener('DOMContentLoaded', ()=>{
+  startAutoRefresh();
+  loadAllSheets();
+  window.addEventListener('resize', ()=>Object.values(charts).forEach(c=>c&&c.resize()));
+});
+</script>
+</body>
+</html>
